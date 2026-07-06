@@ -42,6 +42,7 @@ KNOWN_MERCHANT_PREFIXES = {
     "OLA": "Ola",
     "MYNTRA": "Myntra",
     "BIGBASKET": "BigBasket",
+    "FANCODE": "FanCode",
 }
 
 

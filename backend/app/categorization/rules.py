@@ -23,6 +23,7 @@ from app.categorization.merchant_normalizer import normalize_merchant
 
 class Category(str, Enum):
     FOOD_DELIVERY = "Food Delivery"
+    FOOD_DINING = "Food & Dining"  # physical restaurants/sweet shops, not delivery apps
     GROCERIES = "Groceries"
     SUBSCRIPTIONS = "Subscriptions"
     UTILITIES = "Utilities & Recharge"
@@ -30,6 +31,8 @@ class Category(str, Enum):
     SHOPPING = "Shopping"
     HEALTH = "Health & Medical"
     ENTERTAINMENT = "Entertainment"
+    SNACKS_VENDING = "Snacks & Vending"
+    RENT_HOUSING = "Rent & Housing"
     TRANSFER_PERSON = "Person-to-Person Transfer"
     INCOME = "Income / Credit"
     UNCATEGORIZED = "Uncategorized"
@@ -45,7 +48,11 @@ CATEGORY_RULES: dict[Category, set[str]] = {
     Category.TRANSPORT: {"uber", "ola", "pune metro", "metro", "rapido"},
     Category.SHOPPING: {"amazon", "flipkart", "myntra", "ajio"},
     Category.HEALTH: {"pharmeasy", "1mg", "apollo", "practo", "max heal"},
-    Category.ENTERTAINMENT: {"bookmyshow", "pvr", "inox"},
+    Category.ENTERTAINMENT: {"bookmyshow", "pvr", "inox", "fancode"},
+    # These are standard SBI-generated transaction labels (not merchant
+    # names), so they're safe to match generically for anyone's statement
+    # rather than needing a per-user correction.
+    Category.INCOME: {"itdtax", "cemtex", "interest credit"},
 }
 
 
@@ -88,6 +95,20 @@ def categorize(raw_description: str, credit: float, debit: float) -> Categorized
     merchant_info = normalize_merchant(raw_description)
     clean_name = merchant_info["clean_name"]
     clean_name_lower = clean_name.lower()
+
+    # 1. A stored user correction always wins -- this is the personalization
+    # mechanism. If you've previously told the app "Ajinkya is my landlord,
+    # categorize as Rent", every future transaction to Ajinkya uses that
+    # answer instead of guessing again.
+    from app.categorization.corrections import get_override
+    override_value = get_override(clean_name)
+    if override_value is not None:
+        return CategorizedTransaction(
+            clean_merchant=clean_name,
+            category=Category(override_value),
+            confidence=1.0,
+            needs_review=False,
+        )
 
     matched_category = _match_category_by_keyword(clean_name_lower)
     if matched_category is not None:
