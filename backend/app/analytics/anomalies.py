@@ -94,6 +94,7 @@ def _build_features(transactions: list[Transaction]) -> list[list[float]]:
 
 
 from app.analytics.recurring import detect_recurring_payments
+from app.analytics.anomaly_exclusions import get_excluded_merchants, is_excluded
 
 
 def detect_anomalies(session: Session, user_id: uuid.UUID, std_threshold: float = 2.5) -> list[dict]:
@@ -117,6 +118,11 @@ def detect_anomalies(session: Session, user_id: uuid.UUID, std_threshold: float 
     known, legitimate recurring payment", we exclude those merchants here
     entirely rather than inventing a second, competing heuristic for the
     same question.
+
+    Personalization: the user can also explicitly say "never flag this
+    merchant" (e.g. a regular local vendor whose amounts vary a lot but are
+    all normal) via anomaly_exclusions -- this is the same principle as the
+    categorization corrections, applied here.
     """
     transactions = list(session.execute(
         select(Transaction).where(
@@ -129,7 +135,13 @@ def detect_anomalies(session: Session, user_id: uuid.UUID, std_threshold: float 
         return []  # not enough data for this to be meaningful yet
 
     recurring_merchants = {r["merchant"] for r in detect_recurring_payments(session, user_id)}
-    transactions = [t for t in transactions if t.clean_merchant not in recurring_merchants]
+    excluded_merchants = get_excluded_merchants(session, user_id)
+
+    transactions = [
+        t for t in transactions
+        if t.clean_merchant not in recurring_merchants
+        and not is_excluded(t.clean_merchant, excluded_merchants)
+    ]
 
     if len(transactions) < MIN_TRANSACTIONS_FOR_DETECTION:
         return []
