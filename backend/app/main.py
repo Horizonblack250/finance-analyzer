@@ -14,6 +14,8 @@ Run locally with:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.routers import upload, analyze
+
 app = FastAPI(
     title="Smart Budget Analyzer API",
     description="Ingests bank statements and returns personalized spending analytics.",
@@ -29,6 +31,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(upload.router)
+app.include_router(analyze.router)
 
 
 @app.get("/")
