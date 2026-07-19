@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@theme {
+  /* Ledger / bank-statement inspired palette -- deep ink navy instead of
+     the generic cream/terracotta AI-dashboard look, with a brass accent
+     for money-positive signals. */
+  --color-ink-950: #0b1220;
+  --color-ink-900: #111a2b;
+  --color-ink-800: #182238;
+  --color-ink-700: #23304a;
+  --color-paper: #edeff3;
+  --color-paper-dim: #a4adc0;
+  --color-brass: #c6a15b;
+  --color-brass-bright: #ddc088;
+  --color-emerald: #4fae8d;
+  --color-brick: #c0575a;
+
+  --font-display: 'Manrope', sans-serif;
+  --font-sans: 'Manrope', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+body {
+  background-color: var(--color-ink-950);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+}
+
+/* Tabular numerals for all currency figures -- genuinely functional, not
+   decorative: financial amounts need to align vertically in columns. */
+.ledger-number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
