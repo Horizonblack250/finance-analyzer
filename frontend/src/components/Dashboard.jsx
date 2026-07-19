@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { fetchAnalysis } from '../api/client'
 
@@ -28,6 +28,33 @@ function computePieData(monthlyTrends, mode) {
     .map(([name, value]) => ({ name, value: Math.round(value) }))
     .filter((d) => d.value > 0)
     .sort((a, b) => b.value - a.value)
+}
+
+function buildForecastChartData(monthlyTrends, category, forecast) {
+  const months = Object.keys(monthlyTrends).sort()
+  const historicalValues = months.map((m) => monthlyTrends[m][category] || 0)
+
+  // Trim leading zero months so a category that only recently started
+  // appearing doesn't drag the chart's left edge down to zero pointlessly.
+  const firstNonZero = historicalValues.findIndex((v) => v > 0)
+  const trimmedMonths = firstNonZero >= 0 ? months.slice(firstNonZero) : months
+  const trimmedValues = firstNonZero >= 0 ? historicalValues.slice(firstNonZero) : historicalValues
+
+  const data = trimmedMonths.map((month, i) => ({
+    month,
+    actual: trimmedValues[i],
+    // forecastLine is null everywhere except the LAST historical point (so
+    // the dashed line visually connects to it) -- this is the standard
+    // recharts trick for rendering a solid line that transitions into a
+    // dashed "projected" segment at the end.
+    forecastLine: i === trimmedValues.length - 1 ? trimmedValues[i] : null,
+  }))
+
+  if (forecast) {
+    data.push({ month: 'Next Month', actual: null, forecastLine: forecast.predicted })
+  }
+
+  return data
 }
 
 function transformTrendsForChart(monthlyTrends) {
@@ -64,6 +91,7 @@ function Dashboard() {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
   const [pieMode, setPieMode] = useState('this_month')
+  const [forecastCategory, setForecastCategory] = useState(null)
 
   useEffect(() => {
     fetchAnalysis()
@@ -213,14 +241,69 @@ function Dashboard() {
 
       {/* Forecast */}
       <section>
-        <SectionEyebrow>Next Month Forecast</SectionEyebrow>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {(() => {
+          const forecastEntries = Object.entries(analysis.forecast_next_month)
+          const sortedByPredicted = [...forecastEntries].sort((a, b) => b[1].predicted - a[1].predicted)
+          const activeCategory = forecastCategory || sortedByPredicted[0]?.[0]
+          const activeForecast = analysis.forecast_next_month[activeCategory]
+          const lineData = activeCategory
+            ? buildForecastChartData(analysis.monthly_trends, activeCategory, activeForecast)
+            : []
+
+          return (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <SectionEyebrow>Next Month Forecast</SectionEyebrow>
+                <select
+                  value={activeCategory || ''}
+                  onChange={(e) => setForecastCategory(e.target.value)}
+                  className="bg-ink-900 border border-ink-700 rounded-full text-sm text-paper px-4 py-1.5"
+                >
+                  {sortedByPredicted.map(([category]) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-ink-900 border border-ink-700 rounded-lg p-6">
+                {activeForecast && (
+                  <div className="flex items-baseline gap-3 mb-4">
+                    <span className="ledger-number text-3xl text-brass-bright">{formatRupees(activeForecast.predicted)}</span>
+                    <span className="text-sm text-paper-dim">
+                      predicted for next month &middot; {activeForecast.method === 'trend' ? 'linear regression trend' : 'historical average'} &middot; {activeForecast.months_used} months of data
+                    </span>
+                  </div>
+                )}
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={lineData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#23304a" />
+                    <XAxis dataKey="month" stroke="#a4adc0" fontSize={12} />
+                    <YAxis stroke="#a4adc0" fontSize={12} tickFormatter={(v) => `₹${v / 1000}k`} />
+                    <Tooltip
+                      contentStyle={{ background: '#111a2b', border: '1px solid #23304a', borderRadius: 8 }}
+                      formatter={(value) => formatRupees(value)}
+                    />
+                    <Line type="monotone" dataKey="actual" stroke="#c6a15b" strokeWidth={2.5} dot={{ r: 4 }} name="Actual" />
+                    <Line type="monotone" dataKey="forecastLine" stroke="#4fae8d" strokeWidth={2.5} strokeDasharray="6 4" dot={{ r: 4 }} name="Projected" connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </>
+          )
+        })()}
+
+        {/* Quick-scan grid for every category */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
           {Object.entries(analysis.forecast_next_month).map(([category, d]) => (
-            <div key={category} className="bg-ink-900 border border-ink-700 rounded-lg p-4">
+            <button
+              key={category}
+              onClick={() => setForecastCategory(category)}
+              className="text-left bg-ink-900 border border-ink-700 rounded-lg p-4 hover:border-brass/50 transition-colors"
+            >
               <div className="text-sm text-paper-dim mb-1">{category}</div>
               <div className="ledger-number text-xl text-paper">{formatRupees(d.predicted)}</div>
               <div className="text-xs text-paper-dim mt-1">{d.method} · {d.months_used}mo</div>
-            </div>
+            </button>
           ))}
         </div>
       </section>
