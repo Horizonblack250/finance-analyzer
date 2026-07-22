@@ -1,9 +1,3 @@
-"""
-Shared statement import logic -- used by BOTH the CLI script
-(import_statement.py, for local testing) and the FastAPI /upload endpoint.
-Keeping this in one place means the two never drift apart from each other.
-"""
-
 import uuid
 
 from sqlalchemy import select
@@ -37,11 +31,6 @@ def import_and_save_statement(
     statement_format: str,
     password: str | None = None,
 ) -> dict:
-    """
-    Parses a statement, categorizes every transaction (checking DB
-    corrections first), saves new ones to the database, and skips
-    duplicates. Returns a summary dict.
-    """
     if statement_format == "relationship_summary":
         raw_transactions = parse_sbi_statement(file_path, password=password)
     elif statement_format == "statement_of_account":

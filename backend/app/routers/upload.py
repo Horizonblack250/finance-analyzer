@@ -1,21 +1,19 @@
 """
 POST /upload -- accepts a bank statement PDF, parses it, categorizes every
-transaction, saves new ones to the database, and returns a summary.
-
-This is the real product entrypoint -- the same thing run_categorization.py
-and import_statement.py let us test from the command line, now reachable
-over HTTP the way an actual frontend will call it.
+transaction, saves new ones to the database under the LOGGED-IN USER's real
+identity, and returns a summary.
 """
 
 import tempfile
 import os
+import uuid
 from typing import Literal
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models.constants import DEFAULT_USER_ID
+from app.auth import get_current_user_id
 from app.services.statement_import import import_and_save_statement
 
 router = APIRouter()
@@ -26,11 +24,8 @@ async def upload_statement(
     file: UploadFile = File(...),
     statement_format: Literal["relationship_summary", "statement_of_account"] = Form(...),
     password: str | None = Form(None),
+    user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    # Save the uploaded file to a temp path -- our parsers work off a file
-    # path (pdfplumber.open), not an in-memory stream, so this is the
-    # simplest bridge between "file arrived over HTTP" and "existing,
-    # already-tested parser code".
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         contents = await file.read()
         tmp.write(contents)
@@ -40,18 +35,16 @@ async def upload_statement(
     try:
         summary = import_and_save_statement(
             session,
-            DEFAULT_USER_ID,
+            user_id,
             tmp_path,
             statement_format,
             password,
         )
     except ValueError as e:
-        # Wrong/missing password, or a parsing error -- surface it clearly
-        # instead of a generic 500.
         raise HTTPException(status_code=400, detail=str(e))
     finally:
         session.close()
-        os.unlink(tmp_path)  # clean up the temp file regardless of outcome
+        os.unlink(tmp_path)
 
     return {
         "filename": file.filename,

@@ -1,11 +1,3 @@
-"""
-Anomaly exclusion model -- lets the user say "never flag this merchant as
-an anomaly, regardless of amount." Same personalization principle as the
-categorization corrections: the user's own knowledge (e.g. "Mauli is my
-regular food vendor, small or large amounts are all normal for them")
-overrides a generic statistical guess.
-"""
-
 import uuid
 from datetime import datetime
 
@@ -20,5 +12,5 @@ class AnomalyExclusion(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    merchant_name = Column(String, nullable=False)  # stored lowercase, substring-matched
+    merchant_name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

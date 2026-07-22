@@ -22,8 +22,6 @@ if not _raw_url:
         "backend/ folder with a line like: DATABASE_URL=postgresql://..."
     )
 
-# SQLAlchemy needs the driver named explicitly in the URL scheme when using
-# psycopg3. Supabase gives you a plain "postgresql://" URL, so we rewrite it.
 if _raw_url.startswith("postgresql://"):
     DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+psycopg://", 1)
 else:
@@ -35,7 +33,6 @@ Base = declarative_base()
 
 
 def get_db():
-    """FastAPI dependency: yields a database session, closes it afterward."""
     db = SessionLocal()
     try:
         yield db
