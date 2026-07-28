@@ -1,11 +1,23 @@
 import axios from 'axios'
+import { supabase } from '../supabaseClient'
 
 // In dev, Vite's proxy (see vite.config.js) forwards /api/* to the FastAPI
-// backend at http://127.0.0.1:8000, so we never hardcode that URL here --
-// this means the same code works once deployed, just by pointing the
-// deployed frontend's proxy/env at the deployed backend URL instead.
+// backend at http://127.0.0.1:8000.
 const client = axios.create({
   baseURL: '/api',
+})
+
+// Attach the current login token to every outgoing request. Without this,
+// the backend's auth check (which now requires a valid token on /upload
+// and /analyze) would reject every single request with a 401, even from
+// a logged-in user -- the frontend was never telling the backend WHO was
+// making the request.
+client.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`
+  }
+  return config
 })
 
 export async function fetchAnalysis() {
@@ -24,6 +36,16 @@ export async function uploadStatement(file, statementFormat, password) {
   const response = await client.post('/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
+  return response.data
+}
+
+export async function fetchBudget() {
+  const response = await client.get('/budget')
+  return response.data
+}
+
+export async function setBudget(monthlyIncome) {
+  const response = await client.post('/budget', { monthly_income: monthlyIncome })
   return response.data
 }
 

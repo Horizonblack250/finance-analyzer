@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { fetchAnalysis } from '../api/client'
+import { fetchAnalysis, fetchBudget, setBudget } from '../api/client'
 
-// A restrained, ledger-appropriate palette for chart series -- cycles
-// through these for however many categories exist that month.
 const SERIES_COLORS = [
   '#c6a15b', '#4fae8d', '#7c93c4', '#c0575a', '#9b7fb8',
   '#5aa7c6', '#b8925a', '#6fae5a', '#c67f9e', '#8a93a6',
@@ -34,8 +32,6 @@ function buildForecastChartData(monthlyTrends, category, forecast) {
   const months = Object.keys(monthlyTrends).sort()
   const historicalValues = months.map((m) => monthlyTrends[m][category] || 0)
 
-  // Trim leading zero months so a category that only recently started
-  // appearing doesn't drag the chart's left edge down to zero pointlessly.
   const firstNonZero = historicalValues.findIndex((v) => v > 0)
   const trimmedMonths = firstNonZero >= 0 ? months.slice(firstNonZero) : months
   const trimmedValues = firstNonZero >= 0 ? historicalValues.slice(firstNonZero) : historicalValues
@@ -43,10 +39,6 @@ function buildForecastChartData(monthlyTrends, category, forecast) {
   const data = trimmedMonths.map((month, i) => ({
     month,
     actual: trimmedValues[i],
-    // forecastLine is null everywhere except the LAST historical point (so
-    // the dashed line visually connects to it) -- this is the standard
-    // recharts trick for rendering a solid line that transitions into a
-    // dashed "projected" segment at the end.
     forecastLine: i === trimmedValues.length - 1 ? trimmedValues[i] : null,
   }))
 
@@ -83,6 +75,108 @@ function SectionEyebrow({ children }) {
     <div className="text-xs tracking-[0.2em] uppercase text-brass font-medium mb-3">
       {children}
     </div>
+  )
+}
+
+function BudgetSection() {
+  const [budget, setBudgetData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [incomeInput, setIncomeInput] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const loadBudget = () => {
+    fetchBudget()
+      .then(setBudgetData)
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => {
+    loadBudget()
+  }, [])
+
+  async function handleSaveIncome(e) {
+    e.preventDefault()
+    if (!incomeInput) return
+    setSaving(true)
+    try {
+      await setBudget(parseFloat(incomeInput))
+      setIncomeInput('')
+      loadBudget()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading || !budget) return null
+
+  return (
+    <section>
+      <SectionEyebrow>Budget Outlook</SectionEyebrow>
+      <div className="bg-ink-900 border border-ink-700 rounded-lg p-6">
+        {budget.status === 'no_budget_set' ? (
+          <div>
+            <p className="text-paper-dim text-sm mb-4">
+              Set your monthly income to see whether next month's projected spending
+              (currently forecasted at <span className="ledger-number text-paper">{formatRupees(budget.total_predicted_spend)}</span>) will leave you a surplus or a shortfall.
+            </p>
+            <form onSubmit={handleSaveIncome} className="flex gap-2">
+              <input
+                type="number"
+                value={incomeInput}
+                onChange={(e) => setIncomeInput(e.target.value)}
+                placeholder="Monthly income (Rs.)"
+                className="flex-1 bg-ink-950 border border-ink-700 rounded-full p-3 px-5 text-paper placeholder:text-paper-dim/50"
+              />
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-brass text-ink-950 font-medium px-6 rounded-full disabled:opacity-40"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-baseline gap-3 mb-2">
+              <span className={`ledger-number text-3xl ${budget.status === 'surplus' ? 'text-emerald' : 'text-brick'}`}>
+                {budget.status === 'surplus' ? '+' : ''}{formatRupees(budget.surplus_or_shortfall)}
+              </span>
+              <span className="text-sm text-paper-dim">
+                projected {budget.status === 'surplus' ? 'surplus' : 'shortfall'} next month
+              </span>
+            </div>
+            <div className="text-sm text-paper-dim mb-5">
+              Income {formatRupees(budget.monthly_income)} vs. predicted spend {formatRupees(budget.total_predicted_spend)}
+            </div>
+
+            <div className="space-y-3">
+              {budget.recommendations.map((rec, i) => (
+                <div key={i} className="bg-ink-950 border border-ink-700 rounded-lg p-4 text-sm text-paper-dim">
+                  {rec.message}
+                </div>
+              ))}
+            </div>
+
+            <details className="mt-4">
+              <summary className="text-xs text-paper-dim cursor-pointer">Update income</summary>
+              <form onSubmit={handleSaveIncome} className="flex gap-2 mt-3">
+                <input
+                  type="number"
+                  value={incomeInput}
+                  onChange={(e) => setIncomeInput(e.target.value)}
+                  placeholder="New monthly income"
+                  className="flex-1 bg-ink-950 border border-ink-700 rounded-full p-3 px-5 text-paper placeholder:text-paper-dim/50 text-sm"
+                />
+                <button type="submit" disabled={saving} className="bg-brass text-ink-950 font-medium px-5 rounded-full text-sm disabled:opacity-40">
+                  Save
+                </button>
+              </form>
+            </details>
+          </div>
+        )}
+      </div>
+    </section>
   )
 }
 
@@ -136,7 +230,8 @@ function Dashboard() {
         <h1 className="font-display text-4xl text-paper">Your Spending, Consolidated</h1>
       </header>
 
-      {/* Monthly trends chart */}
+      <BudgetSection />
+
       <section>
         <SectionEyebrow>Monthly Spending by Category</SectionEyebrow>
         <div className="bg-ink-900 border border-ink-700 rounded-lg p-6">
@@ -158,7 +253,6 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* Category share pie chart, toggleable this-month vs all-time */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <SectionEyebrow>Where It Went</SectionEyebrow>
@@ -204,7 +298,6 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* Month over month change */}
       <section>
         <SectionEyebrow>This Month vs. Your Average</SectionEyebrow>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -220,7 +313,6 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* Recurring payments */}
       <section>
         <SectionEyebrow>Recurring Payments</SectionEyebrow>
         {analysis.recurring_payments.length === 0 ? (
@@ -239,7 +331,6 @@ function Dashboard() {
         )}
       </section>
 
-      {/* Forecast */}
       <section>
         {(() => {
           const forecastEntries = Object.entries(analysis.forecast_next_month)
@@ -292,7 +383,6 @@ function Dashboard() {
           )
         })()}
 
-        {/* Quick-scan grid for every category */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
           {Object.entries(analysis.forecast_next_month).map(([category, d]) => (
             <button
@@ -308,7 +398,6 @@ function Dashboard() {
         </div>
       </section>
 
-      {/* Anomalies */}
       <section>
         <SectionEyebrow>Worth a Second Look</SectionEyebrow>
         {analysis.anomalies.length === 0 ? (
