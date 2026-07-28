@@ -3,6 +3,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { fetchAnalysis, fetchBudget, setBudget } from '../api/client'
+import ExtraVisualizations from './ExtraVisualizations'
 
 const SERIES_COLORS = [
   '#c6a15b', '#4fae8d', '#7c93c4', '#c0575a', '#9b7fb8',
@@ -416,6 +417,8 @@ function Dashboard() {
           </div>
         )}
       </section>
+
+      <ExtraVisualizations />
     </div>
   )
 }

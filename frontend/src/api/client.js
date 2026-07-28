@@ -49,4 +49,9 @@ export async function setBudget(monthlyIncome) {
   return response.data
 }
 
+export async function fetchVisualizations() {
+  const response = await client.get('/visualizations')
+  return response.data
+}
+
 export default client
