@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import { fetchAnalysis, fetchBudget, setBudget } from '../api/client'
 import ExtraVisualizations from './ExtraVisualizations'
+import AnomalyItem from './AnomalyItem'
 
 const SERIES_COLORS = [
   '#c6a15b', '#4fae8d', '#7c93c4', '#c0575a', '#9b7fb8',
@@ -406,13 +407,13 @@ function Dashboard() {
         ) : (
           <div className="space-y-2">
             {analysis.anomalies.map((a, i) => (
-              <div key={i} className="bg-ink-900 border border-ink-700 rounded-lg p-4 flex justify-between items-center">
-                <div>
-                  <div className="text-paper">{a.merchant}</div>
-                  <div className="text-xs text-paper-dim">{a.date} · {a.category}</div>
-                </div>
-                <div className="ledger-number text-lg text-brass-bright">{formatRupees(a.amount)}</div>
-              </div>
+              <AnomalyItem
+                key={i}
+                anomaly={a}
+                onPersonalized={() => {
+                  fetchAnalysis().then(setAnalysis)
+                }}
+              />
             ))}
           </div>
         )}

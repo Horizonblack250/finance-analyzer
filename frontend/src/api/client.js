@@ -54,4 +54,19 @@ export async function fetchVisualizations() {
   return response.data
 }
 
+export async function fetchCategories() {
+  const response = await client.get('/categories')
+  return response.data.categories
+}
+
+export async function setCategoryForMerchant(merchantName, category) {
+  const response = await client.post('/corrections', { merchant_name: merchantName, category })
+  return response.data
+}
+
+export async function excludeMerchantFromAnomalies(merchantName) {
+  const response = await client.post('/anomaly-exclusions', { merchant_name: merchantName })
+  return response.data
+}
+
 export default client
