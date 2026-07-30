@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import upload, analyze, budget, visualizations, personalization
+from app.routers import upload, analyze, budget, visualizations, personalization, coverage
 
 app = FastAPI(
     title="Smart Budget Analyzer API",
@@ -22,6 +22,7 @@ app.include_router(analyze.router)
 app.include_router(budget.router)
 app.include_router(visualizations.router)
 app.include_router(personalization.router)
+app.include_router(coverage.router)
 
 
 @app.get("/")

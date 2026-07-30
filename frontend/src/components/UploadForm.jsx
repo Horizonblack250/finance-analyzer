@@ -1,13 +1,24 @@
-import { useState } from 'react'
-import { uploadStatement } from '../api/client'
+import { useState, useEffect } from 'react'
+import { uploadStatement, fetchCoverage } from '../api/client'
+
+function formatMonthLabel(monthKey) {
+  const [year, month] = monthKey.split('-')
+  const date = new Date(parseInt(year), parseInt(month) - 1)
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+}
 
 function UploadForm({ onUploaded }) {
   const [file, setFile] = useState(null)
   const [format, setFormat] = useState('relationship_summary')
   const [password, setPassword] = useState('')
-  const [status, setStatus] = useState('idle') // idle | uploading | success | error
+  const [status, setStatus] = useState('idle')
   const [result, setResult] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
+  const [coverage, setCoverage] = useState(null)
+
+  useEffect(() => {
+    fetchCoverage().then(setCoverage)
+  }, [])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -20,6 +31,7 @@ function UploadForm({ onUploaded }) {
       const data = await uploadStatement(file, format, password || undefined)
       setResult(data)
       setStatus('success')
+      fetchCoverage().then(setCoverage)
       if (onUploaded) onUploaded()
     } catch (err) {
       const detail = err.response?.data?.detail || err.message
@@ -31,7 +43,23 @@ function UploadForm({ onUploaded }) {
   return (
     <div className="max-w-xl mx-auto px-6 py-16">
       <div className="text-xs tracking-[0.2em] uppercase text-paper-dim mb-2">Upload</div>
-      <h1 className="font-display text-3xl text-paper mb-8">Add a Bank Statement</h1>
+      <h1 className="font-display text-3xl text-paper mb-4">Add a Bank Statement</h1>
+
+      {coverage && (
+        <div className="bg-ink-900 border border-ink-700 rounded-full px-5 py-2.5 mb-8 text-sm">
+          {coverage.has_data ? (
+            <span className="text-paper-dim">
+              Data currently covers{' '}
+              <span className="text-brass">{formatMonthLabel(coverage.earliest_month)}</span>
+              {' – '}
+              <span className="text-brass">{formatMonthLabel(coverage.latest_month)}</span>
+              {' '}({coverage.total_transactions} transactions)
+            </span>
+          ) : (
+            <span className="text-paper-dim">No data uploaded yet — this will be your first statement.</span>
+          )}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>

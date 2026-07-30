@@ -69,4 +69,9 @@ export async function excludeMerchantFromAnomalies(merchantName) {
   return response.data
 }
 
+export async function fetchCoverage() {
+  const response = await client.get('/coverage')
+  return response.data
+}
+
 export default client
