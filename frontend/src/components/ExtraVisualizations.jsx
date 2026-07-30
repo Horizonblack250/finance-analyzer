@@ -4,6 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
 } from 'recharts'
 import { fetchVisualizations } from '../api/client'
+import { filterByMonthRange } from '../utils/dateRange'
 
 function formatRupees(amount) {
   return `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
@@ -137,7 +138,7 @@ function TopMerchants({ data }) {
   )
 }
 
-function ExtraVisualizations() {
+function ExtraVisualizations({ monthRange = 'all' }) {
   const [viz, setViz] = useState(null)
 
   useEffect(() => {
@@ -146,9 +147,11 @@ function ExtraVisualizations() {
 
   if (!viz) return null
 
+  const filteredCashFlow = filterByMonthRange(viz.cash_flow, monthRange)
+
   return (
     <>
-      <CashFlowChart data={viz.cash_flow} />
+      <CashFlowChart data={filteredCashFlow} />
       <TopMerchants data={viz.top_merchants} />
       <CalendarHeatmap data={viz.calendar_heatmap} />
       <AnomalyScatter data={viz.anomaly_scatter} />

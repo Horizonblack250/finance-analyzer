@@ -26,7 +26,11 @@ function AnomalyItem({ anomaly, onPersonalized }) {
     const category = newCategory.trim() || selectedCategory
     if (!category) return
     setStatus('saving')
+    // Categorizing from THIS screen means "I've reviewed this, it's resolved" --
+    // so we also exclude it from future anomaly flags, not just fix its
+    // category. (Categorizing from elsewhere in the app wouldn't imply this.)
     const result = await setCategoryForMerchant(anomaly.merchant, category)
+    await excludeMerchantFromAnomalies(anomaly.merchant)
     setStatus('saved')
     if (onPersonalized) onPersonalized(result)
   }

@@ -5,21 +5,17 @@ import {
 import { fetchAnalysis, fetchBudget, setBudget } from '../api/client'
 import ExtraVisualizations from './ExtraVisualizations'
 import AnomalyItem from './AnomalyItem'
+import { getAvailableMonths, filterByMonthRange } from '../utils/dateRange'
 
 const SERIES_COLORS = [
   '#c6a15b', '#4fae8d', '#7c93c4', '#c0575a', '#9b7fb8',
   '#5aa7c6', '#b8925a', '#6fae5a', '#c67f9e', '#8a93a6',
 ]
 
-function computePieData(monthlyTrends, mode) {
-  const months = Object.keys(monthlyTrends).sort()
-  if (months.length === 0) return []
-
+function computePieData(monthlyTrends) {
   const totals = {}
-  const monthsToSum = mode === 'this_month' ? [months[months.length - 1]] : months
-
-  monthsToSum.forEach((month) => {
-    Object.entries(monthlyTrends[month]).forEach(([category, amount]) => {
+  Object.values(monthlyTrends).forEach((monthData) => {
+    Object.entries(monthData).forEach(([category, amount]) => {
       totals[category] = (totals[category] || 0) + amount
     })
   })
@@ -186,7 +182,7 @@ function Dashboard() {
   const [analysis, setAnalysis] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [pieMode, setPieMode] = useState('this_month')
+  const [monthRange, setMonthRange] = useState('all')
   const [forecastCategory, setForecastCategory] = useState(null)
 
   useEffect(() => {
@@ -223,7 +219,9 @@ function Dashboard() {
     )
   }
 
-  const { data: chartData, categories } = transformTrendsForChart(analysis.monthly_trends)
+  const availableMonths = getAvailableMonths(analysis.monthly_trends)
+  const filteredTrends = filterByMonthRange(analysis.monthly_trends, monthRange)
+  const { data: chartData, categories } = transformTrendsForChart(filteredTrends)
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-10 space-y-12">
@@ -235,7 +233,26 @@ function Dashboard() {
       <BudgetSection />
 
       <section>
-        <SectionEyebrow>Monthly Spending by Category</SectionEyebrow>
+        <div className="flex items-center justify-between mb-3">
+          <SectionEyebrow>Monthly Spending by Category</SectionEyebrow>
+          <select
+            value={monthRange}
+            onChange={(e) => setMonthRange(e.target.value)}
+            className="bg-ink-900 border border-ink-700 rounded-full text-sm text-paper px-4 py-1.5"
+          >
+            <option value="all">All Time (Consolidated)</option>
+            <option value="last_3">Last 3 Months</option>
+            <option value="last_6">Last 6 Months</option>
+            <option value="last_1">Last Month</option>
+            {availableMonths.length > 0 && (
+              <optgroup label="Single Month">
+                {[...availableMonths].reverse().map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
         <div className="bg-ink-900 border border-ink-700 rounded-lg p-6">
           <ResponsiveContainer width="100%" height={360}>
             <BarChart data={chartData}>
@@ -256,28 +273,12 @@ function Dashboard() {
       </section>
 
       <section>
-        <div className="flex items-center justify-between mb-3">
-          <SectionEyebrow>Where It Went</SectionEyebrow>
-          <div className="flex gap-1 bg-ink-900 border border-ink-700 rounded-full p-1">
-            <button
-              onClick={() => setPieMode('this_month')}
-              className={`px-3 py-1 rounded-full text-xs transition-colors ${pieMode === 'this_month' ? 'bg-brass text-ink-950 font-medium' : 'text-paper-dim'}`}
-            >
-              This Month
-            </button>
-            <button
-              onClick={() => setPieMode('all_time')}
-              className={`px-3 py-1 rounded-full text-xs transition-colors ${pieMode === 'all_time' ? 'bg-brass text-ink-950 font-medium' : 'text-paper-dim'}`}
-            >
-              All Time
-            </button>
-          </div>
-        </div>
+        <SectionEyebrow>Where It Went ({monthRange === 'all' ? 'All Time' : monthRange.startsWith('last_') ? monthRange.replace('last_', 'Last ').replace('_', ' ') + (monthRange === 'last_1' ? ' Month' : ' Months') : monthRange})</SectionEyebrow>
         <div className="bg-ink-900 border border-ink-700 rounded-lg p-6">
           <ResponsiveContainer width="100%" height={340}>
             <PieChart>
               <Pie
-                data={computePieData(analysis.monthly_trends, pieMode)}
+                data={computePieData(filteredTrends)}
                 dataKey="value"
                 nameKey="name"
                 cx="50%"
@@ -286,7 +287,7 @@ function Dashboard() {
                 outerRadius={120}
                 paddingAngle={2}
               >
-                {computePieData(analysis.monthly_trends, pieMode).map((entry, i) => (
+                {computePieData(filteredTrends).map((entry, i) => (
                   <Cell key={entry.name} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
                 ))}
               </Pie>
@@ -419,7 +420,7 @@ function Dashboard() {
         )}
       </section>
 
-      <ExtraVisualizations />
+      <ExtraVisualizations monthRange={monthRange} />
     </div>
   )
 }
