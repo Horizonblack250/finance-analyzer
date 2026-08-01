@@ -1,0 +1,22 @@
+# Never bake secrets into the image -- Cloud Run will provide these as
+# actual environment variables at deploy time instead.
+.env
+.env.local
+.env.example
+
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+.git/
+.gitignore
+README.md
+
+*.db
+*.sqlite3
+
+# Local test artifacts, not needed in the deployed image
+.pytest_cache/
