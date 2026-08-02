@@ -33,3 +33,14 @@ Thumbs.db
 # Database
 *.db
 *.sqlite3
+
+# Real bank statements -- NEVER commit these. Test fixtures should be
+# synthetic data only, kept under a clearly-named test_data/ folder.
+*BankStatement*
+*bank_statement*
+/uploads/
+/statements/
+
+# SSH private keys -- never commit these either
+oracle-key/
+*.key
