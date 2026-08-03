@@ -22,4 +22,4 @@ EXPOSE 8080
 # "exec" form (not a shell wrapping uvicorn as a child process) so uvicorn
 # receives shutdown signals directly from Cloud Run -- without this,
 # container restarts/deploys can hang or kill connections ungracefully.
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
