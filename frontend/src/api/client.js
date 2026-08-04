@@ -1,17 +1,18 @@
 import axios from 'axios'
 import { supabase } from '../supabaseClient'
 
-// In dev, Vite's proxy (see vite.config.js) forwards /api/* to the FastAPI
-// backend at http://127.0.0.1:8000.
+// In local dev, Vite's proxy (see vite.config.js) forwards /api/* to
+// http://127.0.0.1:8000. That proxy doesn't exist once this is a deployed
+// static site (Vercel), so in production we need to call the real backend
+// URL directly instead -- set via VITE_API_URL at build time. Falls back
+// to the local dev proxy path when that env var isn't set.
+const baseURL = import.meta.env.VITE_API_URL || '/api'
+
 const client = axios.create({
-  baseURL: '/api',
+  baseURL,
 })
 
-// Attach the current login token to every outgoing request. Without this,
-// the backend's auth check (which now requires a valid token on /upload
-// and /analyze) would reject every single request with a 401, even from
-// a logged-in user -- the frontend was never telling the backend WHO was
-// making the request.
+// Attach the current login token to every outgoing request.
 client.interceptors.request.use(async (config) => {
   const { data: { session } } = await supabase.auth.getSession()
   if (session?.access_token) {
