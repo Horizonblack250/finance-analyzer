@@ -20,10 +20,6 @@ Upload a bank statement PDF and the app will:
 - **Learn from you**: click any flagged transaction to categorize it (including creating entirely custom categories) or exclude a merchant from anomaly detection — corrections apply retroactively to past transactions, not just future ones
 - **Visualize everything**: monthly category trends, a "this month vs. all time" pie chart, cash flow (income vs. expense), top merchants, a spending-by-day-of-month heatmap, and a scatter plot of the actual feature space the anomaly detection model evaluates
 
-## Screenshots
-
-*(Add screenshots here — Hero page, Dashboard, Upload flow)*
-
 ---
 
 ## Tech Stack
