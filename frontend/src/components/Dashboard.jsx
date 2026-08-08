@@ -12,6 +12,8 @@ const SERIES_COLORS = [
   '#5aa7c6', '#b8925a', '#6fae5a', '#c67f9e', '#8a93a6',
 ]
 
+const TOTAL_OPTION_KEY = '__total__'
+
 function computePieData(monthlyTrends) {
   const totals = {}
   Object.values(monthlyTrends).forEach((monthData) => {
@@ -24,6 +26,17 @@ function computePieData(monthlyTrends) {
     .map(([name, value]) => ({ name, value: Math.round(value) }))
     .filter((d) => d.value > 0)
     .sort((a, b) => b.value - a.value)
+}
+
+// Sums every category together per month -- used for the "Total (All
+// Categories)" consolidated forecast view, as opposed to a single
+// category's own trend.
+function computeTotalMonthlyTrend(monthlyTrends) {
+  const totals = {}
+  Object.entries(monthlyTrends).forEach(([month, categories]) => {
+    totals[month] = Object.values(categories).reduce((sum, v) => sum + v, 0)
+  })
+  return totals
 }
 
 function buildForecastChartData(monthlyTrends, category, forecast) {
@@ -44,6 +57,23 @@ function buildForecastChartData(monthlyTrends, category, forecast) {
     data.push({ month: 'Next Month', actual: null, forecastLine: forecast.predicted })
   }
 
+  return data
+}
+
+// Same shape as buildForecastChartData, but built from the pre-summed
+// total-per-month series instead of a single category's series.
+function buildTotalForecastChartData(monthlyTrends, totalPredicted) {
+  const totalByMonth = computeTotalMonthlyTrend(monthlyTrends)
+  const months = Object.keys(totalByMonth).sort()
+  const values = months.map((m) => totalByMonth[m])
+
+  const data = months.map((month, i) => ({
+    month,
+    actual: values[i],
+    forecastLine: i === values.length - 1 ? values[i] : null,
+  }))
+
+  data.push({ month: 'Next Month', actual: null, forecastLine: totalPredicted })
   return data
 }
 
@@ -338,21 +368,28 @@ function Dashboard() {
         {(() => {
           const forecastEntries = Object.entries(analysis.forecast_next_month)
           const sortedByPredicted = [...forecastEntries].sort((a, b) => b[1].predicted - a[1].predicted)
-          const activeCategory = forecastCategory || sortedByPredicted[0]?.[0]
-          const activeForecast = analysis.forecast_next_month[activeCategory]
-          const lineData = activeCategory
-            ? buildForecastChartData(analysis.monthly_trends, activeCategory, activeForecast)
-            : []
+          const totalPredicted = forecastEntries.reduce((sum, [, d]) => sum + d.predicted, 0)
+
+          const activeCategory = forecastCategory || TOTAL_OPTION_KEY
+          const isTotal = activeCategory === TOTAL_OPTION_KEY
+          const activeForecast = isTotal
+            ? { predicted: totalPredicted, method: 'sum of per-category forecasts', months_used: null }
+            : analysis.forecast_next_month[activeCategory]
+
+          const lineData = isTotal
+            ? buildTotalForecastChartData(analysis.monthly_trends, totalPredicted)
+            : (activeCategory ? buildForecastChartData(analysis.monthly_trends, activeCategory, activeForecast) : [])
 
           return (
             <>
               <div className="flex items-center justify-between mb-3">
                 <SectionEyebrow>Next Month Forecast</SectionEyebrow>
                 <select
-                  value={activeCategory || ''}
+                  value={activeCategory}
                   onChange={(e) => setForecastCategory(e.target.value)}
                   className="bg-ink-900 border border-ink-700 rounded-full text-sm text-paper px-4 py-1.5"
                 >
+                  <option value={TOTAL_OPTION_KEY}>Total (All Categories)</option>
                   {sortedByPredicted.map(([category]) => (
                     <option key={category} value={category}>{category}</option>
                   ))}
@@ -364,7 +401,10 @@ function Dashboard() {
                   <div className="flex items-baseline gap-3 mb-4">
                     <span className="ledger-number text-3xl text-brass-bright">{formatRupees(activeForecast.predicted)}</span>
                     <span className="text-sm text-paper-dim">
-                      predicted for next month &middot; {activeForecast.method === 'trend' ? 'linear regression trend' : 'historical average'} &middot; {activeForecast.months_used} months of data
+                      predicted for next month
+                      {isTotal
+                        ? ' · sum of every category\'s forecast'
+                        : ` · ${activeForecast.method === 'trend' ? 'linear regression trend' : 'historical average'} · ${activeForecast.months_used} months of data`}
                     </span>
                   </div>
                 )}
