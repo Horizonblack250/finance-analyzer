@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   ScatterChart, Scatter, ComposedChart, Bar, Line, BarChart,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { fetchVisualizations } from '../api/client'
 import { filterByMonthRange } from '../utils/dateRange'
@@ -53,10 +53,45 @@ function AnomalyScatter({ data }) {
   )
 }
 
-function CalendarHeatmap({ data }) {
-  if (!data) return null
-  const values = Object.values(data)
-  const max = Math.max(...values, 1)
+// Discrete quantile-based buckets (GitHub-contribution-graph style) instead
+// of continuous opacity scaling. Continuous scaling let one outlier day
+// (e.g. a rent payment) stretch the whole range, squashing every other
+// day into visually indistinguishable near-zero shades. Discrete buckets
+// based on where each day's value falls relative to the OTHER non-zero
+// days reads far more clearly.
+const BUCKET_COLORS = [
+  'var(--color-ink-800)',   // 0: no spend
+  'rgba(198, 161, 91, 0.25)', // low
+  'rgba(198, 161, 91, 0.45)', // medium-low
+  'rgba(198, 161, 91, 0.65)', // medium-high
+  'rgba(198, 161, 91, 0.85)', // high
+  '#ddc088',                  // highest
+]
+
+function bucketFor(value, sortedNonZeroValues) {
+  if (value <= 0) return 0
+  const rank = sortedNonZeroValues.findIndex((v) => v >= value)
+  const percentile = rank / Math.max(sortedNonZeroValues.length - 1, 1)
+  if (percentile <= 0.2) return 1
+  if (percentile <= 0.4) return 2
+  if (percentile <= 0.6) return 3
+  if (percentile <= 0.8) return 4
+  return 5
+}
+
+function CalendarHeatmap({ data, monthRange }) {
+  if (!data || Object.keys(data).length === 0) return null
+
+  // data is { "2026-01": { "1": 0, "2": 500, ... }, "2026-02": {...} }
+  const filtered = filterByMonthRange(data, monthRange)
+
+  // Sum across whichever months are currently selected, per day
+  const dayTotals = {}
+  for (let day = 1; day <= 31; day++) {
+    dayTotals[day] = Object.values(filtered).reduce((sum, monthData) => sum + (monthData[String(day)] || 0), 0)
+  }
+
+  const nonZeroSorted = Object.values(dayTotals).filter((v) => v > 0).sort((a, b) => a - b)
 
   return (
     <section>
@@ -64,22 +99,26 @@ function CalendarHeatmap({ data }) {
       <div className="bg-ink-900 border border-ink-700 rounded-lg p-6">
         <div className="grid grid-cols-7 gap-2">
           {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
-            const value = data[String(day)] || 0
-            const intensity = value / max
-            const bg = intensity === 0
-              ? 'var(--color-ink-800)'
-              : `rgba(198, 161, 91, ${0.15 + intensity * 0.85})`
+            const value = dayTotals[day] || 0
+            const bucket = bucketFor(value, nonZeroSorted)
             return (
               <div
                 key={day}
                 title={`Day ${day}: ${formatRupees(value)}`}
                 className="aspect-square rounded-md flex items-center justify-center text-xs text-paper-dim"
-                style={{ backgroundColor: bg }}
+                style={{ backgroundColor: BUCKET_COLORS[bucket] }}
               >
                 {day}
               </div>
             )
           })}
+        </div>
+        <div className="flex items-center gap-1.5 mt-4 text-xs text-paper-dim">
+          <span>Less</span>
+          {BUCKET_COLORS.map((color, i) => (
+            <div key={i} className="w-4 h-4 rounded" style={{ backgroundColor: color }} />
+          ))}
+          <span>More</span>
         </div>
       </div>
     </section>
@@ -153,7 +192,7 @@ function ExtraVisualizations({ monthRange = 'all' }) {
     <>
       <CashFlowChart data={filteredCashFlow} />
       <TopMerchants data={viz.top_merchants} />
-      <CalendarHeatmap data={viz.calendar_heatmap} />
+      <CalendarHeatmap data={viz.calendar_heatmap} monthRange={monthRange} />
       <AnomalyScatter data={viz.anomaly_scatter} />
     </>
   )

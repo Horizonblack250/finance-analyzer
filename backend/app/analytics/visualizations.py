@@ -17,12 +17,6 @@ from app.analytics.anomaly_exclusions import get_excluded_merchants, is_excluded
 
 
 def get_anomaly_scatter_data(session: Session, user_id: uuid.UUID) -> list[dict]:
-    """
-    Returns every (non-recurring, non-excluded) debit transaction with its
-    day-of-month, amount, and whether it was flagged anomalous -- this is
-    literally the feature space Isolation Forest works in, so plotting it
-    visualizes the model's decision surface directly, not just its output.
-    """
     from app.analytics.anomalies import detect_anomalies
 
     transactions = list(session.execute(
@@ -67,9 +61,17 @@ def get_anomaly_scatter_data(session: Session, user_id: uuid.UUID) -> list[dict]
 
 def get_calendar_heatmap_data(session: Session, user_id: uuid.UUID) -> dict:
     """
-    Total spend aggregated by day-of-month (1-31), across all months --
-    answers "which days of the month do I tend to spend the most on",
-    not which specific calendar date.
+    Total spend by day-of-month (1-31), broken down PER MONTH -- e.g.
+    {"2026-01": {"1": 0.0, "2": 500.0, ...}, "2026-02": {...}}.
+
+    Design note: an earlier version returned a single flattened total per
+    day across all history, which had two real problems -- it couldn't be
+    filtered by the same month-range selector every other chart uses, and
+    one outlier month (e.g. rent always landing on day 5) dominated the
+    all-time total, making every other day visually indistinguishable.
+    Keeping it per-month lets the frontend sum only the SELECTED months
+    (same filterByMonthRange utility already used for cash flow), so the
+    chart reflects whatever range the user actually has selected.
     """
     transactions = session.execute(
         select(Transaction).where(
@@ -78,19 +80,20 @@ def get_calendar_heatmap_data(session: Session, user_id: uuid.UUID) -> dict:
         )
     ).scalars().all()
 
-    totals: dict[int, float] = defaultdict(float)
+    by_month: dict[str, dict[int, float]] = defaultdict(lambda: defaultdict(float))
     for t in transactions:
         date = _parse_transaction_date(t.transaction_date)
-        totals[date.day] += float(t.debit)
+        month_key = date.strftime("%Y-%m")
+        by_month[month_key][date.day] += float(t.debit)
 
-    return {str(day): round(totals.get(day, 0.0), 2) for day in range(1, 32)}
+    result = {}
+    for month, day_totals in by_month.items():
+        result[month] = {str(day): round(day_totals.get(day, 0.0), 2) for day in range(1, 32)}
+
+    return result
 
 
 def get_monthly_cash_flow(session: Session, user_id: uuid.UUID) -> dict:
-    """
-    Income vs. expense per month, and the net -- a step beyond the
-    spending-only trends view, showing the full picture of money in vs out.
-    """
     transactions = session.execute(
         select(Transaction).where(Transaction.user_id == user_id)
     ).scalars().all()
@@ -117,7 +120,6 @@ def get_monthly_cash_flow(session: Session, user_id: uuid.UUID) -> dict:
 
 
 def get_top_merchants(session: Session, user_id: uuid.UUID, limit: int = 10) -> list[dict]:
-    """Top merchants by total spend (debit only)."""
     transactions = session.execute(
         select(Transaction).where(
             Transaction.user_id == user_id,
