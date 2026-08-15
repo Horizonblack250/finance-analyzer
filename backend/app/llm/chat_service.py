@@ -90,7 +90,13 @@ def run_chat_turn(
 
             for tool_call in choice.message.tool_calls:
                 func = TOOL_FUNCTIONS.get(tool_call.function.name)
-                args = json.loads(tool_call.function.arguments or "{}")
+                raw_args = tool_call.function.arguments
+                try:
+                    args = json.loads(raw_args) if raw_args else {}
+                except json.JSONDecodeError:
+                    args = {}
+                if not isinstance(args, dict):
+                    args = {}
                 result = (
                     func(session, user_id, **args)
                     if func is not None
