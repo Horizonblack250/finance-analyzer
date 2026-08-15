@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from app.routers import upload, analyze, budget, visualizations, personalization, coverage
+from app.routers import upload, analyze, budget, visualizations, personalization, coverage, chat
 
 load_dotenv()
 
@@ -34,6 +34,7 @@ app.include_router(budget.router)
 app.include_router(visualizations.router)
 app.include_router(personalization.router)
 app.include_router(coverage.router)
+app.include_router(chat.router)
 
 
 @app.get("/")
