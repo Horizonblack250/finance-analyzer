@@ -75,4 +75,25 @@ export async function fetchCoverage() {
   return response.data
 }
 
+// LLM chat insights -- pass conversationId to continue an existing thread,
+// or omit it (undefined/null) to start a new one. Backend returns the
+// conversation_id so the frontend can keep threading follow-up questions.
+export async function sendChatMessage(message, conversationId) {
+  const response = await client.post('/chat', {
+    message,
+    conversation_id: conversationId || null,
+  })
+  return response.data
+}
+
+export async function fetchConversations() {
+  const response = await client.get('/chat/conversations')
+  return response.data
+}
+
+export async function fetchConversationMessages(conversationId) {
+  const response = await client.get(`/chat/conversations/${conversationId}`)
+  return response.data
+}
+
 export default client

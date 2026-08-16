@@ -6,6 +6,7 @@ import { fetchAnalysis, fetchBudget, setBudget } from '../api/client'
 import ExtraVisualizations from './ExtraVisualizations'
 import AnomalyItem from './AnomalyItem'
 import { getAvailableMonths, filterByMonthRange } from '../utils/dateRange'
+import ChatWidget from './ChatWidget'
 
 const SERIES_COLORS = [
   '#c6a15b', '#4fae8d', '#7c93c4', '#c0575a', '#9b7fb8',
@@ -461,6 +462,7 @@ function Dashboard() {
       </section>
 
       <ExtraVisualizations monthRange={monthRange} />
+      <ChatWidget />
     </div>
   )
 }
