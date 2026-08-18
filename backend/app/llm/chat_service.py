@@ -18,7 +18,7 @@ from app.models.chat_conversation import ChatConversation
 from app.models.chat_message import ChatMessage
 from app.llm.tools import TOOL_SCHEMAS, TOOL_FUNCTIONS
 
-MODEL = "llama-3.3-70b-versatile"
+MODEL = "openai/gpt-oss-120b"
 MAX_TOOL_ROUNDS = 5
 
 SYSTEM_PROMPT = (
