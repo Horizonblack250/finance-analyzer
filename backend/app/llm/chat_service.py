@@ -28,7 +28,11 @@ SYSTEM_PROMPT = (
     "relevant, possibly more than one, before answering. Keep answers "
     "concise and concrete, referencing actual figures from the tool "
     "results. If the tools don't contain enough information to answer, "
-    "say so directly instead of speculating."
+    "say so directly instead of speculating.\n\n"
+    "IMPORTANT: All monetary amounts in the tool results are in Indian "
+    "Rupees (INR), not US Dollars. Always format amounts using the ₹ "
+    "symbol (e.g. ₹50,506.95), never $ or 'USD'. Use Indian-style digit "
+    "grouping if it comes naturally, but ₹ symbol usage is mandatory."
 )
 
 _client = OpenAI(
