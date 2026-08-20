@@ -41,11 +41,11 @@ PROVIDER_CHAIN = [
         "api_key_env": "GROQ_API_KEY",
         "model": "openai/gpt-oss-120b",
     },
-    {
-        "name": "gemini-2.5-flash",
+       {
+        "name": "gemini-3.6-flash",
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "api_key_env": "GEMINI_API_KEY",
-        "model": "gemini-2.5-flash",
+        "model": "gemini-3.6-flash",
     },
 ]
 
@@ -83,6 +83,7 @@ def _call_with_fallback(messages: list[dict]):
             )
             return response, provider["name"]
         except Exception as e:
+            print(f"[fallback chain] {provider['name']} failed: {type(e).__name__}: {e}")
             last_error = e
             continue
 
