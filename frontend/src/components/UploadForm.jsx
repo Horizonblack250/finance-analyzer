@@ -82,8 +82,8 @@ function UploadForm({ onUploaded }) {
             onChange={(e) => setFormat(e.target.value)}
             className="w-full bg-ink-900 border border-ink-700 rounded-full p-3 px-5 text-paper"
           >
-            <option value="relationship_summary">Relationship Summary</option>
-            <option value="statement_of_account">Statement of Account</option>
+            <option value="relationship_summary">SBI — Relationship Summary</option>
+            <option value="statement_of_account">SBI — Statement of Account</option>
             <option value="hdfc">HDFC (coming soon)</option>
           </select>
         </div>
