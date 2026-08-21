@@ -41,11 +41,11 @@ PROVIDER_CHAIN = [
         "api_key_env": "GROQ_API_KEY",
         "model": "openai/gpt-oss-120b",
     },
-       {
-        "name": "gemini-3.6-flash",
+    {
+        "name": "gemini-2.5-flash",
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "api_key_env": "GEMINI_API_KEY",
-        "model": "gemini-3.6-flash",
+        "model": "gemini-2.5-flash",
     },
 ]
 
@@ -108,9 +108,12 @@ def run_chat_turn(
     user_id: uuid.UUID,
     user_message: str,
     conversation_id: uuid.UUID | None,
+    title_override: str | None = None,
 ) -> dict:
     if conversation_id is None:
-        conversation = ChatConversation(user_id=user_id, title=user_message[:60])
+        conversation = ChatConversation(
+            user_id=user_id, title=title_override or user_message[:60]
+        )
         session.add(conversation)
         session.commit()
         session.refresh(conversation)
