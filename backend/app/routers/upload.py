@@ -32,7 +32,7 @@ router = APIRouter()
 @router.post("/upload")
 async def upload_statement(
     file: UploadFile = File(...),
-    statement_format: Literal["relationship_summary", "statement_of_account"] = Form(...),
+    statement_format: Literal["relationship_summary", "statement_of_account", "hdfc"] = Form(...),
     password: str | None = Form(None),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):

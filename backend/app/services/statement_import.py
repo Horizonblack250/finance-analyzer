@@ -9,6 +9,7 @@ from app.categorization.db_corrections import get_override
 from app.categorization.merchant_normalizer import normalize_merchant
 from app.parsers.sbi_parser import parse_sbi_statement
 from app.parsers.sbi_statement_of_account_parser import parse_sbi_statement_of_account
+from app.parsers.hdfc_parser import parse_hdfc_statement
 
 
 def _transaction_already_exists(session: Session, user_id: uuid.UUID, date: str, raw_description: str, debit: float, credit: float) -> bool:
@@ -35,6 +36,8 @@ def import_and_save_statement(
         raw_transactions = parse_sbi_statement(file_path, password=password)
     elif statement_format == "statement_of_account":
         raw_transactions = parse_sbi_statement_of_account(file_path, password=password)
+    elif statement_format == "hdfc":
+        raw_transactions = parse_hdfc_statement(file_path, password=password)
     else:
         raise ValueError(f"Unknown format: {statement_format}")
 
