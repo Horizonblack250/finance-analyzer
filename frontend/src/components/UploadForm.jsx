@@ -84,6 +84,7 @@ function UploadForm({ onUploaded }) {
           >
             <option value="relationship_summary">Relationship Summary</option>
             <option value="statement_of_account">Statement of Account</option>
+            <option value="hdfc">HDFC (coming soon)</option>
           </select>
         </div>
 
