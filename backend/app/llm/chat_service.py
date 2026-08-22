@@ -42,10 +42,10 @@ PROVIDER_CHAIN = [
         "model": "openai/gpt-oss-120b",
     },
     {
-        "name": "gemini-2.5-flash",
+        "name": "gemini-3.6-flash",
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "api_key_env": "GEMINI_API_KEY",
-        "model": "gemini-2.5-flash",
+        "model": "gemini-3.6-flash",
     },
 ]
 
